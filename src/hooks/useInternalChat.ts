@@ -4,6 +4,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { InternalMessage } from '@/types'
+import { useNotification } from './useNotification'
 
 const MESSAGES_LIMIT = 80
 
@@ -51,6 +52,7 @@ export interface Room {
 
 export function useInternalChat(operatorEmail: string | null) {
     // ── State ──────────────────────────────────────────────────────────────────
+    const { notify } = useNotification()
     const [isOpen, setIsOpen] = useState(false)
     const [activeRoom, setActiveRoom] = useState<string>('general')
 
@@ -168,6 +170,11 @@ export function useInternalChat(operatorEmail: string | null) {
 
                     // Notificação: menção no geral
                     if (!isMine && mentions.includes(operatorEmail)) {
+                        notify({
+                            title: `${displayNameFromEmail(msg.sender_email)} te mencionou`,
+                            body: msg.body.slice(0, 80),
+                            type: 'mention',
+                        })
                         const notif: Notification = {
                             id: `mention-${msg.id}`,
                             type: 'mention',
@@ -184,6 +191,11 @@ export function useInternalChat(operatorEmail: string | null) {
                     if (!isMine && roomId !== 'general') {
                         const isDmForMe = roomId === pvRoomId(operatorEmail, msg.sender_email)
                         if (isDmForMe && !isCurrentRoom) {
+                            notify({
+                                title: `Mensagem de ${displayNameFromEmail(msg.sender_email)}`,
+                                body: msg.body.slice(0, 60),
+                                type: 'dm',
+                            })
                             const notif: Notification = {
                                 id: `dm-${msg.id}`,
                                 type: 'dm',

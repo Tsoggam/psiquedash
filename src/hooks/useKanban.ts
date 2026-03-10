@@ -15,6 +15,7 @@ import {
   getClinic,
 } from '@/lib/supabase'
 import { Chat, Message, Clinic, Operator } from '@/types'
+import { useNotification } from './useNotification'
 
 export type KanbanStatus = 'novo' | 'emergencia' | 'em_atendimento' | 'agendamento_ia' | 'finalizado'
 
@@ -38,8 +39,10 @@ export function useKanban() {
   const [clinic, setClinic] = useState<Clinic | null>(null)
   const [search, setSearch] = useState('')
 
+  const { notify } = useNotification()
   const msgChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
   const seenRealtimeIds = useRef<Set<number>>(new Set())
+  const seenKanbanChatIds = useRef<Set<number>>(new Set())
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
@@ -64,7 +67,43 @@ export function useKanban() {
   useEffect(() => {
     const channel = supabase
       .channel('kanban-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'chats' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chats' }, (payload) => {
+        // Notificação para chats novos em emergencia ou agendamento_ia
+        if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+          const chat = payload.new as Chat
+          if (!seenKanbanChatIds.current.has(chat.id)) {
+            seenKanbanChatIds.current.add(chat.id)
+            if (chat.kanban_status === 'emergencia') {
+              notify({
+                title: '🚨 Novo atendimento urgente',
+                body: `${chat.name ?? chat.phone ?? 'Cliente'} entrou na fila de emergência`,
+                type: 'kanban_urgencia',
+              })
+            }
+          } else if (payload.eventType === 'UPDATE') {
+            const prev = payload.old as Partial<Chat>
+            if (
+              prev.kanban_status !== chat.kanban_status &&
+              chat.kanban_status === 'emergencia'
+            ) {
+              notify({
+                title: '🚨 Chat movido para urgência',
+                body: `${chat.name ?? chat.phone ?? 'Cliente'} precisa de atenção imediata`,
+                type: 'kanban_urgencia',
+              })
+            }
+            if (
+              prev.kanban_status !== chat.kanban_status &&
+              chat.kanban_status === 'agendamento_ia'
+            ) {
+              notify({
+                title: '📅 Novo agendamento',
+                body: `${chat.name ?? chat.phone ?? 'Cliente'} aguarda confirmação de agendamento`,
+                type: 'kanban_agendamento',
+              })
+            }
+          }
+        }
         loadChats().then(() => {
           // Se o chat ativo recebeu update, garante unread_count = 0
           setActiveChat(current => {
@@ -172,6 +211,9 @@ export function useKanban() {
         ...c,
         profile_image: photoMap[c.phone] ?? null,
       }))
+
+      // Popula o set de ids já conhecidos para não notificar na carga inicial
+      mapped.forEach(c => seenKanbanChatIds.current.add(c.id))
 
       setChats(mapped)
     } catch (e) {
