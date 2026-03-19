@@ -112,7 +112,6 @@ export function useNotification() {
             body,
             icon: '/favicon.ico',
             tag: type,
-            renotify: true,
         })
 
         if (onClick) {
