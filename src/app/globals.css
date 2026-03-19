@@ -1947,3 +1947,22 @@ body {
   text-align: center;
   flex-shrink: 0;
 }
+
+@media (max-width: 1440px) {
+  .chat-header-actions {
+    gap: 4px;
+  }
+
+  .chat-header-actions .icon-btn {
+    width: 30px;
+    height: 30px;
+  }
+
+  .chat-header-info h3 {
+    font-size: 13px;
+  }
+
+  .chat-header-info p {
+    font-size: 11px;
+  }
+}

@@ -103,7 +103,7 @@ function ChatCard({
         background: active ? '#f0f7f4' : '#fff',
         border: `1.5px solid ${active ? '#4a7a5c' : '#e8ecef'}`,
         borderRadius: '10px',
-        padding: '12px',
+        padding: '10px',
         cursor: 'grab',
         transition: 'all 0.15s',
         boxShadow: active ? '0 2px 8px rgba(74,122,92,0.12)' : '0 1px 3px rgba(0,0,0,0.04)',
@@ -243,7 +243,7 @@ export default function KanbanBoard({
 
       {/* Toolbar */}
       <div style={{
-        padding: '16px 20px', background: '#fff',
+        padding: '12px 16px', background: '#fff',
         borderBottom: '1px solid #e8ecef',
         display: 'flex', alignItems: 'center', gap: '12px',
       }}>
@@ -286,8 +286,8 @@ export default function KanbanBoard({
       <div style={{
         flex: 1, overflow: 'auto',
         display: 'grid',
-        gridTemplateColumns: `repeat(${COLUMNS.length}, minmax(240px, 1fr))`,
-        gap: '16px', padding: '16px', minWidth: 0,
+        gridTemplateColumns: `repeat(${COLUMNS.length}, minmax(0, 1fr))`,
+        gap: '8px', padding: '10px', minWidth: 0,
       }}>
         {COLUMNS.map(col => {
           const isOver = overCol === col.key && draggingChat?.kanban_status !== col.key
@@ -324,7 +324,7 @@ export default function KanbanBoard({
                 border: isOver ? `2px dashed ${col.accent}` : '2px solid transparent',
                 padding: '10px',
                 display: 'flex', flexDirection: 'column', gap: '8px',
-                minHeight: '200px',
+                minHeight: '160px',
                 transition: 'background 0.15s, border 0.15s',
               }}>
                 {isOver && (
