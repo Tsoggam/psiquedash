@@ -48,7 +48,7 @@ function playNotificationSound(type: NotifType, existingCtx?: AudioContext | nul
             osc.onended = () => ctx.close()
         }
     } catch {
-        // AudioContext não disponível
+
     }
 }
 

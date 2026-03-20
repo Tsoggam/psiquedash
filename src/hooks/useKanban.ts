@@ -74,11 +74,13 @@ export function useKanban() {
           if (!seenKanbanChatIds.current.has(chat.id)) {
             seenKanbanChatIds.current.add(chat.id)
             if (chat.kanban_status === 'emergencia') {
+              const chatName = chat.name ?? chat.phone ?? 'Cliente'
               notify({
-                title: '🚨 Novo atendimento urgente',
-                body: `${chat.name ?? chat.phone ?? 'Cliente'} entrou na fila de emergência`,
+                title: 'Novo atendimento urgente!',
+                body: `${chatName} entrou na fila de emergência`,
                 type: 'kanban_urgencia',
               })
+              flashTitle(chatName)
             }
           } else if (payload.eventType === 'UPDATE') {
             const prev = payload.old as Partial<Chat>
@@ -87,18 +89,19 @@ export function useKanban() {
               chat.kanban_status === 'emergencia'
             ) {
               notify({
-                title: '🚨 Chat movido para urgência',
-                body: `${chat.name ?? chat.phone ?? 'Cliente'} precisa de atenção imediata`,
+                title: 'Chat movido para urgência',
+                body: `${chat.name ?? chat.phone ?? 'Cliente'} precisa de atenção imediata!`,
                 type: 'kanban_urgencia',
               })
+              flashTitle(chat.name ?? chat.phone ?? 'Cliente')
             }
             if (
               prev.kanban_status !== chat.kanban_status &&
               chat.kanban_status === 'agendamento_ia'
             ) {
               notify({
-                title: '📅 Novo agendamento',
-                body: `${chat.name ?? chat.phone ?? 'Cliente'} aguarda confirmação de agendamento`,
+                title: 'Novo agendamento',
+                body: `${chat.name ?? chat.phone ?? 'Cliente'} aguarda confirmação de agendamento!`,
                 type: 'kanban_agendamento',
               })
             }
@@ -173,6 +176,25 @@ export function useKanban() {
     msgChannelRef.current = channel
     return () => { supabase.removeChannel(channel); msgChannelRef.current = null }
   }, [activeChat?.id])
+
+  const titleIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  function flashTitle(name: string) {
+    if (titleIntervalRef.current) clearInterval(titleIntervalRef.current)
+    const original = document.title
+    let toggle = false
+    titleIntervalRef.current = setInterval(() => {
+      document.title = toggle ? `🚨 URGÊNCIA — ${name}` : original
+      toggle = !toggle
+    }, 1000)
+    // Para de piscar quando o usuário voltar pra aba
+    const stop = () => {
+      if (titleIntervalRef.current) clearInterval(titleIntervalRef.current)
+      document.title = original
+      window.removeEventListener('focus', stop)
+    }
+    window.addEventListener('focus', stop)
+  }
 
   async function loadChats() {
     try {
