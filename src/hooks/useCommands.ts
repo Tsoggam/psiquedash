@@ -12,6 +12,7 @@ interface UseCommandsReturn {
     loading: boolean
     addCommand: (command: string, body: string, createdBy: string | null) => Promise<void>
     removeCommand: (command: string) => Promise<void>
+    updateCommand: (command: string, newBody: string) => Promise<void>
     refresh: () => Promise<void>
 }
 
@@ -84,5 +85,15 @@ export function useCommands(): UseCommandsReturn {
         setCommands(prev => prev.filter(c => c.command !== command))
     }, [])
 
-    return { commands, loading, addCommand, removeCommand, refresh: load }
+    const updateCommand = useCallback(async (command: string, newBody: string) => {
+        const { error } = await supabase
+            .from('commands')
+            .update({ body: newBody.trim() })
+            .eq('command', command)
+
+        if (error) throw error
+        setCommands(prev => prev.map(c => c.command === command ? { ...c, body: newBody.trim() } : c))
+    }, [])
+
+    return { commands, loading, addCommand, removeCommand, updateCommand, refresh: load }
 }

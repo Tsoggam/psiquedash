@@ -58,7 +58,7 @@ function TabBtn({ active, onClick, children }: { active: boolean; onClick: () =>
 
 // ─── Commands Tab ─────────────────────────────────────────────────────────────
 function CommandsTab({ operatorEmail }: { operatorEmail: string }) {
-    const { commands, loading, addCommand, removeCommand } = useCommands()
+    const { commands, loading, addCommand, removeCommand, updateCommand } = useCommands()
     const [search, setSearch] = useState('')
     const [newCmd, setNewCmd] = useState('')
     const [newBody, setNewBody] = useState('')
@@ -67,6 +67,10 @@ function CommandsTab({ operatorEmail }: { operatorEmail: string }) {
     const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
     const [deleting, setDeleting] = useState<string | null>(null)
     const [expanded, setExpanded] = useState<string | null>(null)
+    // edição
+    const [editing, setEditing] = useState<string | null>(null)
+    const [editBody, setEditBody] = useState('')
+    const [saving, setSaving] = useState(false)
 
     const filtered = commands.filter(c =>
         !search || c.command.toLowerCase().includes(search.toLowerCase()) || c.body.toLowerCase().includes(search.toLowerCase())
@@ -91,6 +95,32 @@ function CommandsTab({ operatorEmail }: { operatorEmail: string }) {
         finally { setDeleting(null); setConfirmDelete(null) }
     }
 
+    function startEdit(command: string, body: string) {
+        setEditing(command)
+        setEditBody(body)
+        setExpanded(command)
+        setConfirmDelete(null)
+    }
+
+    function cancelEdit() {
+        setEditing(null)
+        setEditBody('')
+    }
+
+    async function handleSaveEdit(command: string) {
+        if (!editBody.trim()) return
+        setSaving(true)
+        try {
+            await updateCommand(command, editBody)
+            setEditing(null)
+            setEditBody('')
+        } catch {
+            setError('Erro ao salvar comando.')
+        } finally {
+            setSaving(false)
+        }
+    }
+
     return (
         <div>
             {/* Add form */}
@@ -101,7 +131,7 @@ function CommandsTab({ operatorEmail }: { operatorEmail: string }) {
                     <input
                         value={newCmd} onChange={e => setNewCmd(e.target.value)}
                         placeholder="/meucomando"
-                        style={{ width: '280px', padding: '9px 12px', border: '1px solid #e0e6ec', borderRadius: '8px', fontSize: '13px', fontFamily: 'Monaco, Menlo, monospace', outline: 'none', background: '#f8fafc', boxSizing: 'border-box' }}
+                        style={{ width: '280px', padding: '9px 12px', border: '1px solid #e0e6ec', borderRadius: '8px', fontSize: '13px', fontFamily: 'Monaco, Menlo, monospace', outline: 'none', background: '#f8fafc', color: '#1a2332', boxSizing: 'border-box' }}
                     />
                 </div>
                 <div style={{ marginBottom: '14px' }}>
@@ -111,7 +141,7 @@ function CommandsTab({ operatorEmail }: { operatorEmail: string }) {
                         onChange={e => { setNewBody(e.target.value); e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px' }}
                         placeholder={"Olá! Como posso ajudar? ☘️"}
                         rows={3}
-                        style={{ width: '100%', padding: '9px 12px', border: '1px solid #e0e6ec', borderRadius: '8px', fontSize: '13px', resize: 'none', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit', lineHeight: '1.5', background: '#f8fafc' }}
+                        style={{ width: '100%', padding: '9px 12px', border: '1px solid #e0e6ec', borderRadius: '8px', fontSize: '13px', resize: 'none', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit', lineHeight: '1.5', background: '#f8fafc', color: '#1a2332' }}
                     />
                 </div>
                 {error && <p style={{ fontSize: '12px', color: '#E74C3C', marginBottom: '10px', fontWeight: 500 }}>⚠️ {error}</p>}
@@ -136,7 +166,12 @@ function CommandsTab({ operatorEmail }: { operatorEmail: string }) {
                         <svg style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: '#8a9ab0' }} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
                         </svg>
-                        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar..." style={{ width: '100%', padding: '7px 12px 7px 30px', border: '1px solid #e0e6ec', borderRadius: '8px', fontSize: '12px', outline: 'none', background: '#f8fafc', boxSizing: 'border-box' }} />
+                        <input
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                            placeholder="Buscar..."
+                            style={{ width: '100%', padding: '7px 12px 7px 30px', border: '1px solid #e0e6ec', borderRadius: '8px', fontSize: '12px', outline: 'none', background: '#f8fafc', color: '#1a2332', caretColor: '#1a2332', boxSizing: 'border-box' }}
+                        />
                     </div>
                 </div>
 
@@ -150,6 +185,8 @@ function CommandsTab({ operatorEmail }: { operatorEmail: string }) {
                                     const isExpanded = expanded === cmd.command
                                     const isConfirming = confirmDelete === cmd.command
                                     const isDeleting = deleting === cmd.command
+                                    const isEditing = editing === cmd.command
+
                                     return (
                                         <div key={cmd.command} style={{ borderBottom: i < filtered.length - 1 ? '1px solid #f0f4f8' : 'none', background: i % 2 === 0 ? '#fff' : '#fafbfd' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '13px 20px' }}>
@@ -167,23 +204,78 @@ function CommandsTab({ operatorEmail }: { operatorEmail: string }) {
                                                     </span>
                                                 )}
                                                 <div style={{ marginLeft: 'auto', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                    {!isConfirming
-                                                        ? <button onClick={() => setConfirmDelete(cmd.command)} style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid #fde8e8', background: '#fff5f5', color: '#E74C3C', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>Remover</button>
-                                                        : <>
-                                                            <span style={{ fontSize: '12px', color: '#E74C3C', fontWeight: 600 }}>Confirmar?</span>
-                                                            <button onClick={() => handleDelete(cmd.command)} disabled={isDeleting} style={{ padding: '5px 10px', borderRadius: '6px', border: 'none', background: '#E74C3C', color: '#fff', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>
-                                                                {isDeleting ? '...' : 'Sim'}
-                                                            </button>
-                                                            <button onClick={() => setConfirmDelete(null)} style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid #e0e6ec', background: '#fff', color: '#5a6a7a', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>Não</button>
-                                                        </>
-                                                    }
+                                                    {/* Botão Editar */}
+                                                    {!isConfirming && !isEditing && (
+                                                        <button
+                                                            onClick={() => startEdit(cmd.command, cmd.body)}
+                                                            style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid #d6eaf8', background: '#ebf5fb', color: '#2E86C1', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}
+                                                        >
+                                                            Editar
+                                                        </button>
+                                                    )}
+                                                    {/* Botão Remover */}
+                                                    {!isEditing && (
+                                                        !isConfirming
+                                                            ? <button onClick={() => setConfirmDelete(cmd.command)} style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid #fde8e8', background: '#fff5f5', color: '#E74C3C', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>Remover</button>
+                                                            : <>
+                                                                <span style={{ fontSize: '12px', color: '#E74C3C', fontWeight: 600 }}>Confirmar?</span>
+                                                                <button onClick={() => handleDelete(cmd.command)} disabled={isDeleting} style={{ padding: '5px 10px', borderRadius: '6px', border: 'none', background: '#E74C3C', color: '#fff', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>
+                                                                    {isDeleting ? '...' : 'Sim'}
+                                                                </button>
+                                                                <button onClick={() => setConfirmDelete(null)} style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid #e0e6ec', background: '#fff', color: '#5a6a7a', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>Não</button>
+                                                            </>
+                                                    )}
                                                 </div>
                                             </div>
+
+                                            {/* Expanded: modo edição ou visualização */}
                                             {isExpanded && (
                                                 <div style={{ padding: '0 20px 16px 48px' }}>
-                                                    <pre style={{ margin: 0, padding: '12px 14px', background: '#f8fafc', border: '1px solid #e8ecef', borderRadius: '8px', fontSize: '12px', color: '#1a2332', whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: '1.6', fontFamily: 'inherit' }}>
-                                                        {cmd.body}
-                                                    </pre>
+                                                    {isEditing ? (
+                                                        <div>
+                                                            <textarea
+                                                                value={editBody}
+                                                                onChange={e => {
+                                                                    setEditBody(e.target.value)
+                                                                    e.target.style.height = 'auto'
+                                                                    e.target.style.height = Math.min(e.target.scrollHeight, 300) + 'px'
+                                                                }}
+                                                                rows={4}
+                                                                style={{
+                                                                    width: '100%', padding: '10px 12px', border: '1.5px solid #2E86C1',
+                                                                    borderRadius: '8px', fontSize: '13px', resize: 'none', outline: 'none',
+                                                                    boxSizing: 'border-box', fontFamily: 'inherit', lineHeight: '1.5',
+                                                                    background: '#f8fafc', color: '#1a2332', caretColor: '#1a2332',
+                                                                }}
+                                                            />
+                                                            <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                                                                <button
+                                                                    onClick={() => handleSaveEdit(cmd.command)}
+                                                                    disabled={saving || !editBody.trim()}
+                                                                    style={{
+                                                                        padding: '7px 16px', borderRadius: '7px', border: 'none',
+                                                                        background: saving ? '#a0b8a8' : '#3d6b4f', color: '#fff',
+                                                                        fontSize: '12px', fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer',
+                                                                        display: 'flex', alignItems: 'center', gap: '6px',
+                                                                    }}
+                                                                >
+                                                                    {saving
+                                                                        ? <><span style={{ width: 11, height: 11, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.8s linear infinite', display: 'inline-block' }} />Salvando...</>
+                                                                        : '✓ Salvar'}
+                                                                </button>
+                                                                <button
+                                                                    onClick={cancelEdit}
+                                                                    style={{ padding: '7px 14px', borderRadius: '7px', border: '1px solid #e0e6ec', background: '#fff', color: '#5a6a7a', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
+                                                                >
+                                                                    Cancelar
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <pre style={{ margin: 0, padding: '12px 14px', background: '#f8fafc', border: '1px solid #e8ecef', borderRadius: '8px', fontSize: '12px', color: '#1a2332', whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: '1.6', fontFamily: 'inherit' }}>
+                                                            {cmd.body}
+                                                        </pre>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
@@ -303,7 +395,7 @@ function OperatorsTab() {
 
     const inputStyle: React.CSSProperties = {
         padding: '9px 12px', border: '1px solid #e0e6ec', borderRadius: '8px',
-        fontSize: '13px', outline: 'none', background: '#f8fafc', boxSizing: 'border-box',
+        fontSize: '13px', outline: 'none', background: '#f8fafc', color: '#1a2332', boxSizing: 'border-box',
     }
 
     return (
