@@ -2,7 +2,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 
-const ADMIN_EMAIL = 'admin@psique.com'
+const ADMIN_EMAILS = ['admin@psique.com', 'rosanne@psique.com', 'anapaula@psique.com', 'cleiton@psique.com']
 
 // service_role NUNCA vai pro browser — só existe aqui no servidor
 const supabaseAdmin = createClient(
@@ -15,7 +15,7 @@ async function isAdmin(req: NextRequest): Promise<boolean> {
     const token = req.headers.get('Authorization')?.slice(7)
     if (!token) return false
     const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
-    return !error && user?.email === ADMIN_EMAIL
+    return !error && !!user?.email && ADMIN_EMAILS.includes(user.email)
 }
 
 // GET — lista operadores
@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
     const users = data.users
-        .filter(u => u.email !== ADMIN_EMAIL)
+        .filter(u => !ADMIN_EMAILS.includes(u.email ?? ''))
         .map(u => ({
             id: u.id,
             email: u.email ?? '',

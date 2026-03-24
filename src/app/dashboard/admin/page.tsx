@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useCommands } from '@/hooks/useCommands'
 
-const ADMIN_EMAIL = 'admin@psique.com'
+const ADMIN_EMAILS = ['admin@psique.com', 'rosanne@psique.com', 'anapaula@psique.com', 'cleiton@psique.com']
 
 interface OperatorStat {
     email: string; name: string; encerrados: number; assumidos: number
@@ -906,7 +906,7 @@ export default function AdminPage() {
 
     useEffect(() => {
         supabase.auth.getUser().then(({ data: { user } }) => {
-            if (!user || user.email !== ADMIN_EMAIL) { router.replace('/'); return }
+            if (!user || !ADMIN_EMAILS.includes(user.email!)) { router.replace('/'); return }
             setOperatorEmail(user.email!)
             setAuthorized(true)
             setChecking(false)

@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation"
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 
-const ADMIN_EMAIL = 'admin@psique.com'
+const ADMIN_EMAILS = ['admin@psique.com', 'rosanne@psique.com', 'anapaula@psique.com', 'cleiton@psique.com']
 
 export default function Sidebar() {
     const pathname = usePathname()
@@ -30,7 +30,7 @@ export default function Sidebar() {
 
     if (pathname === '/' || pathname.startsWith('/login')) return null
 
-    const isAdmin = userEmail === ADMIN_EMAIL
+    const isAdmin = !!userEmail && ADMIN_EMAILS.includes(userEmail)
 
     const links = [
         {
