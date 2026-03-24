@@ -28,6 +28,18 @@ function dedupeMessages(msgs: Message[]): Message[] {
   })
 }
 
+async function clearAIMemory(phone: string) {
+  try {
+    await fetch('/api/clear-memory', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ telefone: phone }),
+    })
+  } catch {
+    // fire-and-forget, não crítico
+  }
+}
+
 export function useKanban() {
   const [chats, setChats] = useState<Chat[]>([])
   const [messages, setMessages] = useState<Message[]>([])
@@ -316,6 +328,10 @@ export function useKanban() {
       return
     }
 
+    // Limpa memória da IA no n8n
+    const phone = chat.phone ?? parsePhone(chat.remotejID)
+    if (phone) clearAIMemory(phone)
+
     const updated = { ...data, profile_image: chat.profile_image ?? null }
     setChats(prev => prev.map(c => c.id === chat.id ? updated : c))
     setActiveChat(null)
@@ -541,6 +557,7 @@ export function useKanban() {
       ))
     }
   }, [activeChat])
+
   const columns: Record<KanbanStatus, Chat[]> = {
     novo: [],
     emergencia: [],
@@ -597,6 +614,12 @@ export function useKanban() {
       .single()
 
     if (error || !data) { console.error('Erro ao mover card:', error); return }
+
+    // Limpa memória da IA ao mover para finalizado via drag
+    if (toStatus === 'finalizado') {
+      const phone = chat.phone ?? parsePhone(chat.remotejID)
+      if (phone) clearAIMemory(phone)
+    }
 
     const updated = { ...data, profile_image: chat.profile_image ?? null }
     setChats(prev => prev.map(c => c.id === chat.id ? updated : c))
